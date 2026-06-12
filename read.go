@@ -1030,11 +1030,21 @@ func okayV4(encrypt dict) bool {
 		return false
 	}
 	cfparam, ok := cf[stmf].(dict)
+	if !ok {
+		return false
+	}
 	if cfparam["AuthEvent"] != nil && cfparam["AuthEvent"] != name("DocOpen") {
 		return false
 	}
-	if cfparam["Length"] != nil && cfparam["Length"] != int64(16) {
-		return false
+	if cfparam["Length"] != nil {
+		length, ok := cfparam["Length"].(int64)
+		if !ok {
+			return false
+		}
+		// crypt filter 的 Length 常见两种写法：16（byte）或 128（bit），均对应 AES-128
+		if length != 16 && length != 128 {
+			return false
+		}
 	}
 	if cfparam["CFM"] != name("AESV2") {
 		return false
