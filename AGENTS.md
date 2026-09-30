@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 ## 项目概述
 
@@ -14,7 +14,7 @@ go build -v ./...         # 构建
 go mod download           # 下载依赖（仅标准库，无外部依赖）
 ```
 
-目前没有 `_test.go` 测试文件，CI 通过 `go test -v ./...` 验证编译通过。
+测试覆盖各核心模块（read/lex/page/ps/ascii85 等均有对应的 `_test.go`），`go test ./...` 运行全部测试。`testdata/` 下的 PDF 是集成测试样例，属二进制文件，不要对其实施行尾转换或手工编辑。
 
 ## 架构
 
@@ -23,7 +23,7 @@ go mod download           # 下载依赖（仅标准库，无外部依赖）
 **数据流**：`Open()` → `Reader` 解析 xref 表 → `Reader.Page(n)` 遍历页面树 → `Page` 方法提取内容。
 
 **关键文件与职责**：
-- `read.go` — 核心引擎：`Value`/`Reader` 类型、xref 解析、对象解析、加密解密（RC4/AES）。这是最大的文件（~2100 行）。
+- `read.go` — 核心引擎：`Value`/`Reader` 类型、xref 解析、对象解析、加密解密（RC4/AES）。这是最大的文件。
 - `page.go` — 页面处理：`Page`/`Font`/`Text`/`Content` 类型、内容流解析（PDF 操作符解释）、文本提取（按行/列/样式）、`Outline` 大纲提取。
 - `lex.go` — 词法分析：PDF token 解析（关键字/名称/字符串/数字）、`buffer` IO、对象指针解析。
 - `text.go` — 字符编码：PDFDocEncoding/WinAnsiEncoding/MacRomanEncoding/UTF-16BE 解码。
@@ -44,3 +44,5 @@ go mod download           # 下载依赖（仅标准库，无外部依赖）
 - 页码从 1 开始（非 0）。
 - 加密文件支持通过 `NewReaderEncrypted()` 处理，传入密码回调函数。
 - `page.go` 中的内容流解析器实现了 PDF 图形状态机（CTM 矩阵变换、文本矩阵），修改文本提取逻辑时需注意矩阵运算。
+- `read.go` 中的对象解析有最大嵌套深度限制（`maxObjectDepth`），超深会 panic 并在上层被 recover 转为错误，不要移除该限制。
+- 仓库用 `.gitattributes` 将 `*.pdf` 标记为 binary，避免行尾转换损坏 `testdata/` 样例；若在旧 checkout 上集成测试报 "cross-reference table not found"，是历史遗留的 CRLF 损坏，用 `git show <rev>:testdata/xx.pdf > testdata/xx.pdf` 恢复。
